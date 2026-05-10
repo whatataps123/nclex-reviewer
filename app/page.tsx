@@ -228,7 +228,7 @@ export default function Home() {
           <div className="bg-blue-600 dark:bg-blue-500 p-2 rounded-lg">
             <BookOpen className="text-white w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">QuizGen AI</h1>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">REVIEWER NI PAU</h1>
         </div>
         
         <div className="flex items-center gap-4">
