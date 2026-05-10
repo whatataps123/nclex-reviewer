@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
     // ==========================================
     
     // Extract the user's IP address from the request headers
-    const ip = req.headers.get('x-forwarded-for') || req.ip || 'anonymous_ip';
+    const forwardedFor = req.headers.get('x-forwarded-for');
+    const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : 'anonymous_ip';
 
     if (supabase) {
       // Calculate the time threshold (e.g., 1 hour ago)
