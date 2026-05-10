@@ -32,11 +32,10 @@ export interface StoredDocument {
 export default function Home() {
   const [activeQuiz, setActiveQuiz] = useState<QuizDocument | null>(null);
   const [savedQuizzes, setSavedQuizzes] = useState<QuizDocument[]>([]);
-  const [storedDocs, setStoredDocs] = useState<StoredDocument[]>([]); // NEW: State for Document Library
+  const [storedDocs, setStoredDocs] = useState<StoredDocument[]>([]);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   
-  // NEW: Toggle between uploading a new file or using an existing one
   const [uploadMode, setUploadMode] = useState<'new' | 'existing'>('new');
   const [quizToDelete, setQuizToDelete] = useState<string | null>(null);
   
@@ -52,21 +51,19 @@ export default function Home() {
     const fetchData = async () => {
       if (!supabase) return;
       
-      // Fetch Quizzes
       const { data: qData } = await supabase.from('quizzes').select('*').order('last_accessed_at', { ascending: false });
       if (qData) {
         setSavedQuizzes(qData);
         localStorage.setItem('quiz_cache', JSON.stringify(qData));
       }
 
-      // Fetch Documents for the "Select Existing" tab
       const { data: dData } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
       if (dData) setStoredDocs(dData);
     };
     fetchData();
   }, []);
 
-  // 1. Logic for a BRAND NEW file upload
+  // 1. Upload NEW PDF and Generate
   const handlePdfUpload = async (file: File) => {
     setIsGenerating(true);
     const formData = new FormData();
@@ -86,7 +83,6 @@ export default function Home() {
           const { data: { publicUrl } } = supabase.storage.from('pdfs').getPublicUrl(fileName);
           uploadedPdfUrl = publicUrl;
           
-          // NEW: Save the document to our permanent standalone table
           const { data: newDoc } = await supabase.from('documents').insert([{
             file_name: originalFileName,
             file_url: uploadedPdfUrl
@@ -118,18 +114,24 @@ export default function Home() {
       const updatedCache = [insertedData, ...savedQuizzes];
       setSavedQuizzes(updatedCache);
       localStorage.setItem('quiz_cache', JSON.stringify(updatedCache));
-    } catch (error) {
-      alert("Error: " + error);
+      
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      // === RATE LIMIT ALERT UI ===
+      if (error.message && error.message.includes("Rate limit")) {
+        alert("⏳ " + error.message);
+      } else {
+        alert("❌ Error: " + (error.message || "Something went wrong"));
+      }
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // 2. NEW: Logic to generate a quiz from an EXISTING document
+  // 2. Generate from EXISTING PDF
   const generateFromExisting = async (doc: StoredDocument) => {
     setIsGenerating(true);
     try {
-      // Fetch the file from the URL and convert it to a Blob so our API can read it
       const response = await fetch(doc.file_url);
       const blob = await response.blob();
       const file = new File([blob], doc.file_name, { type: 'application/pdf' });
@@ -158,8 +160,15 @@ export default function Home() {
       const updatedCache = [insertedData, ...savedQuizzes];
       setSavedQuizzes(updatedCache);
       localStorage.setItem('quiz_cache', JSON.stringify(updatedCache));
-    } catch (error) {
-      alert("Error: " + error);
+      
+    } catch (error: any) {
+      console.error("Generation error:", error);
+      // === RATE LIMIT ALERT UI ===
+      if (error.message && error.message.includes("Rate limit")) {
+        alert("⏳ " + error.message);
+      } else {
+        alert("❌ Error: " + (error.message || "Something went wrong"));
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -219,7 +228,7 @@ export default function Home() {
           <div className="bg-blue-600 dark:bg-blue-500 p-2 rounded-lg">
             <BookOpen className="text-white w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Reviewer ni Pau</h1>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">QuizGen AI</h1>
         </div>
         
         <div className="flex items-center gap-4">
@@ -254,7 +263,6 @@ export default function Home() {
       {!activeQuiz && !isGenerating && (
         <div className="w-full max-w-5xl space-y-16">
           
-          {/* UPLOAD SECTION WITH TABS */}
           <section className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors">
             <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div>
@@ -306,7 +314,6 @@ export default function Home() {
             )}
           </section>
 
-          {/* Rest of Dashboard... */}
           {savedQuizzes.length > 0 && (
             <section>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
