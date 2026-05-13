@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, RotateCcw, Home, Sparkles, Lightbulb, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import QuizRecap from './QuizRecap'; // NEW: Import our abstracted module
 
 export interface QuizQuestion {
   id: number;
@@ -40,7 +41,7 @@ export default function QuizEngine({
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="max-w-2xl mx-auto p-10 bg-white dark:bg-gray-900 rounded-2xl shadow-xl text-center border border-gray-100 dark:border-gray-800 transition-colors"
+        className="max-w-3xl mx-auto p-6 md:p-10 bg-white dark:bg-gray-900 rounded-3xl shadow-xl text-center border border-gray-100 dark:border-gray-800 transition-colors"
       >
         <div className="mb-6 flex justify-center">
           <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-full">
@@ -50,7 +51,7 @@ export default function QuizEngine({
         <h2 className="text-3xl font-bold mb-2 text-gray-800 dark:text-white">Quiz Complete!</h2>
         <p className="text-gray-500 dark:text-gray-400 mb-8">Great job finishing the assessment.</p>
         
-        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-6 mb-8 flex justify-around items-center">
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-6 mb-8 flex justify-around items-center border border-gray-100 dark:border-gray-800">
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">Final Score</p>
             <p className="text-4xl font-black text-blue-600 dark:text-blue-400">{score} / {quizData.length}</p>
@@ -64,7 +65,7 @@ export default function QuizEngine({
           </div>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
           <button 
             onClick={() => window.location.reload()}
             className="flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
@@ -78,6 +79,12 @@ export default function QuizEngine({
             <RotateCcw className="w-5 h-5" /> Retake Quiz
           </button>
         </div>
+
+        {/* NEW: Injecting the encapsulated Recap Module */}
+        <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+           <QuizRecap questions={quizData} userAnswers={userAnswers} />
+        </div>
+
       </motion.div>
     );
   }
