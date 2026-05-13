@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import FileUpload from '@/components/FileUpload';
 import QuizEngine, { QuizQuestion } from '@/components/QuizEngine';
-import { BookOpen, Clock, Search, Trash2, PlayCircle, Moon, Sun, FileText, Download, ExternalLink, AlertTriangle, Plus } from 'lucide-react';
+import { BookOpen, Clock, Search, Trash2, PlayCircle, Moon, Sun, FileText, Download, ExternalLink, AlertTriangle, Plus, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
@@ -63,7 +63,24 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // 1. Upload NEW PDF and Generate
+  // Format the last accessed date nicely
+  const timeAgo = (dateString: string) => {
+    if (!dateString) return 'Just now';
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
+    
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.round(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   const handlePdfUpload = async (file: File) => {
     setIsGenerating(true);
     const formData = new FormData();
@@ -97,6 +114,7 @@ export default function Home() {
       if (!response.ok) throw new Error(data.error || 'Generation failed');
 
       if (!supabase) throw new Error("Database not connected");
+      const now = new Date().toISOString();
       const { data: insertedData, error } = await supabase
         .from('quizzes')
         .insert([{
@@ -107,7 +125,8 @@ export default function Home() {
           score: 0,
           user_answers: {},
           pdf_url: uploadedPdfUrl, 
-          pdf_filename: originalFileName 
+          pdf_filename: originalFileName,
+          last_accessed_at: now // Force sorting to top immediately
         }]).select().single();
 
       if (error) throw error;
@@ -117,7 +136,6 @@ export default function Home() {
       
     } catch (error: any) {
       console.error("Upload error:", error);
-      // === RATE LIMIT ALERT UI ===
       if (error.message && error.message.includes("Rate limit")) {
         alert("⏳ " + error.message);
       } else {
@@ -128,7 +146,6 @@ export default function Home() {
     }
   };
 
-  // 2. Generate from EXISTING PDF
   const generateFromExisting = async (doc: StoredDocument) => {
     setIsGenerating(true);
     try {
@@ -143,6 +160,7 @@ export default function Home() {
       const data = await apiRes.json();
       if (!apiRes.ok) throw new Error(data.error || 'Generation failed');
 
+      const now = new Date().toISOString();
       const { data: insertedData, error } = await supabase
         .from('quizzes')
         .insert([{
@@ -153,7 +171,8 @@ export default function Home() {
           score: 0,
           user_answers: {},
           pdf_url: doc.file_url,
-          pdf_filename: doc.file_name
+          pdf_filename: doc.file_name,
+          last_accessed_at: now
         }]).select().single();
 
       if (error) throw error;
@@ -163,7 +182,6 @@ export default function Home() {
       
     } catch (error: any) {
       console.error("Generation error:", error);
-      // === RATE LIMIT ALERT UI ===
       if (error.message && error.message.includes("Rate limit")) {
         alert("⏳ " + error.message);
       } else {
@@ -215,7 +233,15 @@ export default function Home() {
     setQuizToDelete(null); 
   };
 
-  const filteredQuizzes = savedQuizzes.filter(q => 
+  // 1. Force strict sort by last_accessed_at
+  const sortedQuizzes = [...savedQuizzes].sort((a, b) => {
+    const dateA = new Date(a.last_accessed_at || a.created_at).getTime();
+    const dateB = new Date(b.last_accessed_at || b.created_at).getTime();
+    return dateB - dateA;
+  });
+
+  // 2. Filter the sorted array
+  const filteredQuizzes = sortedQuizzes.filter(q => 
     q.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     q.keywords.some(k => k.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -228,7 +254,7 @@ export default function Home() {
           <div className="bg-blue-600 dark:bg-blue-500 p-2 rounded-lg">
             <BookOpen className="text-white w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">REVIEWER NI PAU</h1>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">QuizGen AI</h1>
         </div>
         
         <div className="flex items-center gap-4">
@@ -335,6 +361,12 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredQuizzes.map((quiz) => {
                   const progress = Math.round((quiz.current_index / quiz.questions.length) * 100);
+                  
+                  // NEW: Calculate Accuracy Stats
+                  const answeredCount = Object.keys(quiz.user_answers || {}).length;
+                  const correctCount = quiz.score || 0;
+                  const incorrectCount = answeredCount - correctCount;
+
                   return (
                     <div 
                       key={quiz.id} 
@@ -350,6 +382,11 @@ export default function Home() {
                       </button>
 
                       <div>
+                        {/* NEW: Timestamp added above the title */}
+                        <div className="flex items-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-500 mb-2 font-bold uppercase tracking-wider">
+                          <Clock className="w-3 h-3" /> {timeAgo(quiz.last_accessed_at || quiz.created_at)}
+                        </div>
+
                         <h3 className="font-bold text-gray-900 dark:text-white mb-4 line-clamp-2 pr-6">{quiz.title}</h3>
                         
                         <div className="flex flex-wrap gap-2 mb-6">
@@ -361,10 +398,22 @@ export default function Home() {
                         </div>
 
                         <div className="space-y-2 mb-6">
-                          <div className="flex justify-between text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                            <span>Progress</span>
-                            <span>{progress}%</span>
+                          {/* NEW: Accuracy stats right above the progress bar */}
+                          <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tighter">
+                            <span className="text-gray-400 dark:text-gray-500">Progress: {progress}%</span>
+                            
+                            {answeredCount > 0 && (
+                              <div className="flex gap-2.5">
+                                <span className="text-emerald-500 dark:text-emerald-400 flex items-center gap-0.5" title="Correct Answers">
+                                  <CheckCircle className="w-3 h-3" /> {correctCount}
+                                </span>
+                                <span className="text-red-500 dark:text-red-400 flex items-center gap-0.5" title="Incorrect Answers">
+                                  <XCircle className="w-3 h-3" /> {incorrectCount}
+                                </span>
+                              </div>
+                            )}
                           </div>
+                          
                           <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                             <div 
                               className={`h-full transition-all duration-500 ${progress === 100 ? 'bg-green-500 dark:bg-green-400' : 'bg-blue-500 dark:bg-blue-400'}`}
