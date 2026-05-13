@@ -373,9 +373,10 @@ export default function Home() {
                       onClick={() => openQuiz(quiz)}
                       className="group relative bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-200 dark:border-gray-800 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/5 cursor-pointer transition-all flex flex-col justify-between"
                     >
+                      {/* UPDATED: Always visible on mobile (opacity-100), hidden on desktop until hover (md:opacity-0) */}
                       <button 
                         onClick={(e) => initiateDelete(e, quiz.id)}
-                        className="absolute top-4 right-4 p-2 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full opacity-0 group-hover:opacity-100 transition-all z-10"
+                        className="absolute top-4 right-4 p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full opacity-100 md:opacity-0 group-hover:opacity-100 transition-all z-10"
                         title="Delete Assessment"
                       >
                         <Trash2 className="w-4 h-4" />
